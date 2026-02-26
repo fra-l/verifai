@@ -28,12 +28,14 @@ class BaseAgent(ABC):
         config: AgentConfig,
         bus: MessageBus,
         api_key: str = "",
+        auth_token: str = "",
     ) -> None:
         self.name = name
         self.config = config
         self.bus = bus
         self._client: anthropic.AsyncAnthropic | None = None
         self._api_key = api_key
+        self._auth_token = auth_token
         self._conversation: list[dict[str, str]] = []
 
         # Subscribe to messages directed at this agent
@@ -42,7 +44,10 @@ class BaseAgent(ABC):
     @property
     def client(self) -> anthropic.AsyncAnthropic:
         if self._client is None:
-            self._client = anthropic.AsyncAnthropic(api_key=self._api_key or None)
+            if self._auth_token:
+                self._client = anthropic.AsyncAnthropic(auth_token=self._auth_token)
+            else:
+                self._client = anthropic.AsyncAnthropic(api_key=self._api_key or None)
         return self._client
 
     @property

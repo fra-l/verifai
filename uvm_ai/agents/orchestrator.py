@@ -47,8 +47,9 @@ class OrchestratorAgent(BaseAgent):
         emitter: TemplateEmitter,
         project: ProjectManager,
         api_key: str = "",
+        auth_token: str = "",
     ) -> None:
-        super().__init__("orchestrator", config, bus, api_key)
+        super().__init__("orchestrator", config, bus, api_key, auth_token)
         self.dialogue_mgr = dialogue_mgr
         self.emitter = emitter
         self.project = project

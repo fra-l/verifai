@@ -79,6 +79,7 @@ async def _run_generation(settings: Settings, dut_spec: DUTSpec) -> None:
         emitter=emitter,
         project=project,
         api_key=settings.anthropic_api_key,
+        auth_token=settings.anthropic_auth_token,
     )
 
     plan = await orchestrator.analyze_dut(dut_spec)

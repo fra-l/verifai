@@ -21,8 +21,9 @@ class AgentConfig(BaseModel):
 class Settings(BaseModel):
     """Global application settings."""
 
-    # API
-    anthropic_api_key: str = ""
+    # API — set one of these, not both
+    anthropic_api_key: str = ""   # from console.anthropic.com (ANTHROPIC_API_KEY)
+    anthropic_auth_token: str = ""  # OAuth bearer token (ANTHROPIC_AUTH_TOKEN)
     default_model: str = "claude-sonnet-4-6"
 
     # Agent configs
