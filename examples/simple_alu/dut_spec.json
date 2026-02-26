@@ -1,0 +1,28 @@
+{
+  "name": "simple_alu",
+  "module_name": "simple_alu",
+  "description": "A simple 8-bit ALU with add, subtract, AND, OR operations",
+  "clock_name": "clk",
+  "reset_name": "rst_n",
+  "reset_active_low": true,
+  "ports": [
+    {"name": "clk",      "direction": "input",  "width": 1, "is_clock": true},
+    {"name": "rst_n",    "direction": "input",  "width": 1, "is_reset": true},
+    {"name": "opcode",   "direction": "input",  "width": 2, "description": "0=ADD, 1=SUB, 2=AND, 3=OR"},
+    {"name": "operand_a","direction": "input",  "width": 8, "description": "First operand"},
+    {"name": "operand_b","direction": "input",  "width": 8, "description": "Second operand"},
+    {"name": "valid_in", "direction": "input",  "width": 1, "description": "Input valid strobe"},
+    {"name": "result",   "direction": "output", "width": 8, "description": "ALU result"},
+    {"name": "valid_out","direction": "output", "width": 1, "description": "Output valid strobe"},
+    {"name": "carry",    "direction": "output", "width": 1, "description": "Carry/borrow flag"}
+  ],
+  "parameters": [],
+  "protocols": [
+    {
+      "name": "alu_if",
+      "port_names": ["opcode", "operand_a", "operand_b", "valid_in", "result", "valid_out", "carry"],
+      "protocol_type": "custom",
+      "description": "Simple valid-based handshake: drive inputs with valid_in, sample outputs on valid_out"
+    }
+  ]
+}
