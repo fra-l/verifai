@@ -1,4 +1,4 @@
-// Simple 8-bit ALU for UVM-AI demonstration
+// Simple 8-bit ALU for verifai demonstration
 module simple_alu (
   input  logic        clk,
   input  logic        rst_n,

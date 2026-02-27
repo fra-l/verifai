@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from uvm_ai.codegen.emitter import TemplateEmitter
-from uvm_ai.codegen.project import ProjectManager
-from uvm_ai.models.uvm_component import (
+from verifai.codegen.emitter import TemplateEmitter
+from verifai.codegen.project import ProjectManager
+from verifai.models.uvm_component import (
     TransactionFieldSpec,
     UVMAgentSpec,
     UVMDriverSpec,

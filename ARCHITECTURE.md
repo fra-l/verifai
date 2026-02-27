@@ -1,8 +1,8 @@
-# UVM-AI Architecture
+# verifai Architecture
 
 ## Vision
 
-UVM-AI accelerates ASIC verification by using AI agents to automate UVM testbench
+verifai accelerates ASIC verification by using AI agents to automate UVM testbench
 construction, stimulus generation, and coverage closure. A hierarchy of specialized
 agents mirrors the UVM component tree: an **Orchestrator** manages the testbench,
 **Component Agents** generate structural RTL/UVM code, and **Sequence Agents**
@@ -94,32 +94,32 @@ Code generation: emit complete UVM testbench
 
 ## 3. Core Modules
 
-### 3.1 `uvm_ai/models/` — Data Models
+### 3.1 `verifai/models/` — Data Models
 - `dut_spec.py`       — DUT port list, parameters, protocol descriptions
 - `tb_plan.py`        — Testbench plan: which agents, connections, sequences
 - `uvm_component.py`  — Abstract representation of any UVM component
 - `messages.py`       — All inter-agent message types
 
-### 3.2 `uvm_ai/agents/` — AI Agents
+### 3.2 `verifai/agents/` — AI Agents
 - `orchestrator.py`   — Top-level orchestrator
 - `env_agent.py`      — Environment assembly agent
 - `uvm_agent_agent.py`— Per-interface UVM agent generator
 - `sequence_agent.py` — Stimulus sequence generator
 - `scoreboard_agent.py`— Scoreboard + coverage agent
 
-### 3.3 `uvm_ai/comms/` — Communication
+### 3.3 `verifai/comms/` — Communication
 - `message_bus.py`    — Async pub/sub message bus
 - `dialogue.py`       — Structured dialogue manager (request/response tracking)
 
-### 3.4 `uvm_ai/templates/` — SystemVerilog/UVM Templates
+### 3.4 `verifai/templates/` — SystemVerilog/UVM Templates
 - Jinja2 templates for every UVM component type
 - Parameterized by data models
 
-### 3.5 `uvm_ai/codegen/` — Code Generation
+### 3.5 `verifai/codegen/` — Code Generation
 - `emitter.py`        — Renders templates with agent-provided data
 - `project.py`        — Manages output file tree and Makefile/filelist
 
-### 3.6 `uvm_ai/cli/` — User Interface
+### 3.6 `verifai/cli/` — User Interface
 - `main.py`           — CLI entry point (click-based)
 - `interactive.py`    — Interactive session mode
 
