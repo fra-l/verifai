@@ -3,9 +3,9 @@
 import asyncio
 import pytest
 
-from uvm_ai.comms.message_bus import MessageBus
-from uvm_ai.comms.dialogue import DialogueManager, DialogueState
-from uvm_ai.models.messages import PlanRequest, PlanResponse, ReviewFeedback
+from verifai.comms.message_bus import MessageBus
+from verifai.comms.dialogue import DialogueManager, DialogueState
+from verifai.models.messages import PlanRequest, PlanResponse, ReviewFeedback
 
 
 class TestMessageBus:

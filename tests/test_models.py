@@ -1,10 +1,10 @@
-"""Tests for UVM-AI data models."""
+"""Tests for verifai data models."""
 
 import pytest
 
-from uvm_ai.models.dut_spec import DUTSpec, PortSpec, PortDirection, ParameterSpec, ProtocolSpec
-from uvm_ai.models.tb_plan import TestbenchPlan, AgentPlan, SequencePlan
-from uvm_ai.models.uvm_component import (
+from verifai.models.dut_spec import DUTSpec, PortSpec, PortDirection, ParameterSpec, ProtocolSpec
+from verifai.models.tb_plan import TestbenchPlan, AgentPlan, SequencePlan
+from verifai.models.uvm_component import (
     UVMSequenceItemSpec,
     UVMDriverSpec,
     UVMMonitorSpec,
@@ -14,7 +14,7 @@ from uvm_ai.models.uvm_component import (
     TransactionFieldSpec,
     UVMComponentType,
 )
-from uvm_ai.models.messages import (
+from verifai.models.messages import (
     PlanRequest,
     PlanResponse,
     ReviewFeedback,
