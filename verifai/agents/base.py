@@ -28,6 +28,7 @@ class BaseAgent(ABC):
         config: AgentConfig,
         bus: MessageBus,
         api_key: str = "",
+        base_url: str = "",
         auth_token: str = "",
     ) -> None:
         self.name = name
@@ -35,6 +36,7 @@ class BaseAgent(ABC):
         self.bus = bus
         self._client: anthropic.AsyncAnthropic | None = None
         self._api_key = api_key
+        self._base_url = base_url
         self._auth_token = auth_token
         self._conversation: list[dict[str, str]] = []
 
@@ -47,7 +49,7 @@ class BaseAgent(ABC):
             if self._auth_token:
                 self._client = anthropic.AsyncAnthropic(auth_token=self._auth_token)
             else:
-                self._client = anthropic.AsyncAnthropic(api_key=self._api_key or None)
+                self._client = anthropic.AsyncAnthropic(api_key=self._api_key or None, base_url=self._base_url or None)
         return self._client
 
     @property
@@ -79,7 +81,8 @@ class BaseAgent(ABC):
             messages=list(self._conversation),
         )
 
-        assistant_text = response.content[0].text
+        text_block = next(block for block in response.content if hasattr(block, "text"))
+        assistant_text = text_block.text
         self._conversation.append({"role": "assistant", "content": assistant_text})
 
         logger.debug("[%s] LLM response length: %d chars", self.name, len(assistant_text))
