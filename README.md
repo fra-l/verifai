@@ -21,8 +21,8 @@ verifai uses a hierarchy of Claude-backed agents that mirrors the UVM component 
 Requires Python 3.10 or later.
 
 ```bash
-git clone https://github.com/fra-l/UVM-AI.git
-cd UVM-AI
+git clone https://github.com/fra-l/verifai.git
+cd verifai
 pip install -e .
 ```
 
