@@ -86,6 +86,8 @@ async def _run_generation(settings: Settings, dut_spec: DUTSpec) -> None:
     plan = await orchestrator.analyze_dut(dut_spec)
     click.echo(f"  Plan: {plan.name} ({len(plan.agents)} agents)")
 
+    await orchestrator.generate_components(dut_spec, plan)
+
     # Generate and write output
     project.generate_filelist()
     project.generate_makefile(settings.simulator)

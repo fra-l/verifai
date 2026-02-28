@@ -206,6 +206,228 @@ class OrchestratorAgent(BaseAgent):
         self._artifacts.append(artifact)
         self.project.add_file(artifact.filename, artifact.content)
 
+    async def generate_components(self, dut_spec: "DUTSpec", plan: "TestbenchPlan") -> None:
+        """Render all UVM components from the plan into project files using templates."""
+        from verifai.models.uvm_component import (
+            TransactionFieldSpec,
+            UVMAgentSpec,
+            UVMDriverSpec,
+            UVMEnvSpec,
+            UVMMonitorSpec,
+            UVMScoreboardSpec,
+            UVMSequenceItemSpec,
+            UVMSequenceSpec,
+            UVMSequencerSpec,
+            UVMTestSpec,
+        )
+        from verifai.models.tb_plan import AgentPlan, SequencePlan
+
+        prefix = plan.dut_name
+        package_name = f"{prefix}_pkg"
+        signal_ports = dut_spec.signal_ports
+
+        # If the LLM gave us no agents, synthesise one from the DUT protocols
+        agents = list(plan.agents)
+        if not agents:
+            logger.warning("Plan has no agents; synthesising default agent from DUT spec")
+            default_proto = dut_spec.protocols[0] if dut_spec.protocols else None
+            agents = [
+                AgentPlan(
+                    name=prefix,
+                    interface_name=default_proto.name if default_proto else f"{prefix}_if",
+                    protocol_type=default_proto.protocol_type if default_proto else "custom",
+                    is_active=True,
+                    has_scoreboard=True,
+                )
+            ]
+
+        seq_item_files: list[str] = []
+        sequence_files: list[str] = []
+        agent_files: list[str] = []
+        scoreboard_files: list[str] = []
+        env_files: list[str] = []
+        test_files: list[str] = []
+        agent_specs: list[UVMAgentSpec] = []
+        scoreboard_specs: list[UVMScoreboardSpec] = []
+
+        for agent_plan in agents:
+            aname = agent_plan.name
+            txn_type = f"{aname}_seq_item"
+            intf_name = agent_plan.interface_name or f"{aname}_if"
+
+            # Sequence item: input ports are randomisable, outputs are not
+            fields = [
+                TransactionFieldSpec(
+                    name=p.name,
+                    sv_type="logic",
+                    width=p.width,
+                    is_rand=(p.direction.value == "input"),
+                )
+                for p in signal_ports
+            ]
+            seq_item = UVMSequenceItemSpec(
+                name=txn_type, fields=fields, package_name=package_name
+            )
+            fname = f"{txn_type}.sv"
+            self.project.add_file(fname, self.emitter.render(seq_item))
+            seq_item_files.append(fname)
+
+            # Driver
+            driver = UVMDriverSpec(
+                name=f"{aname}_driver",
+                transaction_type=txn_type,
+                interface_name=intf_name,
+                package_name=package_name,
+            )
+            fname = f"{aname}_driver.sv"
+            self.project.add_file(fname, self.emitter.render(driver))
+            agent_files.append(fname)
+
+            # Monitor
+            monitor = UVMMonitorSpec(
+                name=f"{aname}_monitor",
+                transaction_type=txn_type,
+                interface_name=intf_name,
+                package_name=package_name,
+            )
+            fname = f"{aname}_monitor.sv"
+            self.project.add_file(fname, self.emitter.render(monitor))
+            agent_files.append(fname)
+
+            # Sequencer
+            sequencer = UVMSequencerSpec(
+                name=f"{aname}_sequencer",
+                transaction_type=txn_type,
+                package_name=package_name,
+            )
+            fname = f"{aname}_sequencer.sv"
+            self.project.add_file(fname, self.emitter.render(sequencer))
+            agent_files.append(fname)
+
+            # Agent
+            agent_spec = UVMAgentSpec(
+                name=f"{aname}_agent",
+                is_active=agent_plan.is_active,
+                transaction_type=txn_type,
+                interface_name=intf_name,
+                driver=driver if agent_plan.is_active else None,
+                monitor=monitor,
+                sequencer=sequencer if agent_plan.is_active else None,
+                package_name=package_name,
+            )
+            fname = f"{aname}_agent.sv"
+            self.project.add_file(fname, self.emitter.render(agent_spec))
+            agent_files.append(fname)
+            agent_specs.append(agent_spec)
+
+            # Sequences — fall back to a single basic sequence if LLM gave none
+            seqs = list(agent_plan.sequences)
+            if not seqs:
+                seqs = [SequencePlan(name=f"{aname}_basic_seq", description="Basic stimulus")]
+            for seq_plan in seqs:
+                seq_spec = UVMSequenceSpec(
+                    name=seq_plan.name,
+                    transaction_type=txn_type,
+                    scenario_description=seq_plan.description,
+                    package_name=package_name,
+                )
+                fname = f"sequences/{seq_plan.name}.sv"
+                self.project.add_file(fname, self.emitter.render(seq_spec))
+                sequence_files.append(fname)
+
+            # Scoreboard
+            if agent_plan.has_scoreboard:
+                sb = UVMScoreboardSpec(
+                    name=f"{aname}_scoreboard",
+                    transaction_type=txn_type,
+                    package_name=package_name,
+                )
+                fname = f"{aname}_scoreboard.sv"
+                self.project.add_file(fname, self.emitter.render(sb))
+                scoreboard_files.append(fname)
+                scoreboard_specs.append(sb)
+
+        # Environment
+        env_spec = UVMEnvSpec(
+            name=f"{prefix}_env",
+            agents=agent_specs,
+            scoreboards=scoreboard_specs,
+            package_name=package_name,
+        )
+        fname = f"{prefix}_env.sv"
+        self.project.add_file(fname, self.emitter.render(env_spec))
+        env_files.append(fname)
+
+        # Test
+        test_spec = UVMTestSpec(
+            name=f"{prefix}_base_test",
+            env_type=env_spec.name,
+            timeout_ns=plan.simulation_timeout_ns,
+            package_name=package_name,
+        )
+        fname = f"{prefix}_base_test.sv"
+        self.project.add_file(fname, self.emitter.render(test_spec))
+        test_files.append(fname)
+
+        # Interfaces — one per protocol
+        for proto in dut_spec.protocols:
+            proto_port_names = set(proto.port_names)
+            proto_signals = [
+                {"name": p.name, "sv_type": p.sv_type, "direction": p.direction.value}
+                for p in signal_ports
+                if p.name in proto_port_names
+            ]
+            intf_code = self.emitter.render_interface(proto.name, proto_signals)
+            self.project.add_file(f"{proto.name}.sv", intf_code)
+
+        # Testbench top
+        interfaces = [
+            {"name": proto.name, "type": proto.name, "config_name": f"vif_{proto.name}"}
+            for proto in dut_spec.protocols
+        ]
+        port_connections = []
+        for proto in dut_spec.protocols:
+            proto_port_names = set(proto.port_names)
+            for p in dut_spec.signal_ports:
+                if p.name in proto_port_names:
+                    port_connections.append(
+                        {"port": p.name, "net": f"{proto.name}_if.{p.name}"}
+                    )
+        top_code = self.emitter.render_top(
+            top_module_name=plan.top_module_name,
+            package_name=package_name,
+            dut_module_name=dut_spec.module_name,
+            reset_name=dut_spec.reset_name,
+            reset_active_low=dut_spec.reset_active_low,
+            clock_period_ns=plan.clock_period_ns,
+            reset_duration_ns=plan.reset_duration_ns,
+            simulation_timeout_ns=plan.simulation_timeout_ns,
+            interfaces=interfaces,
+            port_connections=port_connections,
+            dut_parameters=[
+                {"name": p.name, "value": p.default_value} for p in dut_spec.parameters
+            ],
+        )
+        self.project.add_file(f"{plan.top_module_name}.sv", top_code)
+
+        # Package
+        pkg_code = self.emitter.render_package(
+            package_name=package_name,
+            sequence_items=seq_item_files,
+            sequences=sequence_files,
+            agent_files=agent_files,
+            scoreboards=scoreboard_files,
+            environments=env_files,
+            tests=test_files,
+        )
+        self.project.add_file(f"{package_name}.sv", pkg_code)
+
+        logger.info(
+            "Generated %d component files for %s",
+            len(self.project.registered_files),
+            plan.name,
+        )
+
     @property
     def plan(self) -> TestbenchPlan | None:
         return self._plan
