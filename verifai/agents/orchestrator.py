@@ -28,6 +28,18 @@ from verifai.models.tb_plan import TestbenchPlan
 logger = logging.getLogger(__name__)
 
 
+def _extract_json(text: str) -> dict[str, Any]:
+    """Parse JSON from LLM text, stripping markdown code fences if present."""
+    text = text.strip()
+    if text.startswith("```"):
+        first_nl = text.find("\n")
+        text = text[first_nl + 1:] if first_nl != -1 else text[3:]
+        last_fence = text.rfind("```")
+        if last_fence != -1:
+            text = text[:last_fence].rstrip()
+    return json.loads(text)
+
+
 class OrchestratorAgent(BaseAgent):
     """Top-level orchestrator that manages the testbench generation workflow.
 
@@ -47,9 +59,10 @@ class OrchestratorAgent(BaseAgent):
         emitter: TemplateEmitter,
         project: ProjectManager,
         api_key: str = "",
+        base_url: str = "",
         auth_token: str = "",
     ) -> None:
-        super().__init__("orchestrator", config, bus, api_key, auth_token)
+        super().__init__("orchestrator", config, bus, api_key, base_url, auth_token)
         self.dialogue_mgr = dialogue_mgr
         self.emitter = emitter
         self.project = project
@@ -88,7 +101,7 @@ class OrchestratorAgent(BaseAgent):
         response = await self.call_llm(prompt)
 
         try:
-            plan_data = json.loads(response)
+            plan_data = _extract_json(response)
             self._plan = TestbenchPlan(**plan_data)
         except (json.JSONDecodeError, Exception) as exc:
             logger.warning("LLM response was not valid JSON, using defaults: %s", exc)
@@ -146,7 +159,7 @@ class OrchestratorAgent(BaseAgent):
         review_text = await self.call_llm(review_prompt)
 
         try:
-            review_data = json.loads(review_text)
+            review_data = _extract_json(review_text)
             approved = review_data.get("approved", True)
             issues = review_data.get("issues", [])
             suggestions = review_data.get("suggestions", [])

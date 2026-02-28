@@ -81,8 +81,19 @@ class BaseAgent(ABC):
             messages=list(self._conversation),
         )
 
-        text_block = next(block for block in response.content if hasattr(block, "text"))
-        assistant_text = text_block.text
+        text_block = next(
+            (block for block in response.content if block.type == "text"),
+            None,
+        )
+        if text_block is None or not text_block.text:
+            logger.warning(
+                "[%s] LLM returned no text content (block types: %s)",
+                self.name,
+                [b.type for b in response.content],
+            )
+            assistant_text = ""
+        else:
+            assistant_text = text_block.text
         self._conversation.append({"role": "assistant", "content": assistant_text})
 
         logger.debug("[%s] LLM response length: %d chars", self.name, len(assistant_text))

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SequencePlan(BaseModel):
@@ -28,6 +28,13 @@ class AgentPlan(BaseModel):
     has_scoreboard: bool = True
     sequences: list[SequencePlan] = Field(default_factory=list)
     description: str = ""
+
+    @field_validator("sequences", mode="before")
+    @classmethod
+    def coerce_sequences(cls, v: Any) -> list[Any]:
+        if isinstance(v, list):
+            return [{"name": item} if isinstance(item, str) else item for item in v]
+        return v
 
 
 class TestbenchPlan(BaseModel):
